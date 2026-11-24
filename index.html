@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Enigmistica dei campi finiti</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* VOICE everyday: un gioco da tavolo di carta, da fare con la matita
+   IDEA la pagina di una rivista di enigmistica: griglie nere su bianco, numeri in grassetto
+   PICTURE le due tavole (+ e ·) grandi, da compilare, con le regole che si accendono
+   COLOUR bianco carta, inchiostro nero, rosso enigmistica per gli errori, giallo evidenziatore per la selezione
+   TYPE IBM Plex Sans (700 titoli, 600 numeri, 400 testo)
+   LAYOUT laptop: tavole a sinistra, regole e messaggi a destra; telefono: titolo, tavole, tastierino, regole */
+:root{color-scheme:light dark;--bg:light-dark(#ffffff,#131313);--ink:light-dark(#111111,#f1f1f1);--soft:light-dark(#6b6b6b,#a5a5a5);--line:light-dark(#111111,#e9e9e9);--fill:light-dark(#f3f3f1,#1f1f1f);--red:light-dark(#d7261e,#ff5a4f);--redbg:light-dark(#fde5e3,#3a1714);--hi:light-dark(#ffe14d,#6b5a00);--ok:light-dark(#0b7a3b,#4fd28a);--fix:light-dark(#e7e7e3,#262626)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:16px/1.5 "IBM Plex Sans",system-ui,sans-serif;overflow-x:clip}
+.band{padding:clamp(14px,2vw,26px) max(3vw,14px)}
+.top{border-bottom:6px solid var(--line);padding-bottom:12px}
+h1{font-weight:700;font-size:clamp(32px,5vw,48px);line-height:1.05;letter-spacing:-.02em;margin:0 0 6px;text-wrap:balance}
+.lead{margin:0;max-width:62ch;color:var(--soft)}
+.bar{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;margin-top:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chips span{font-weight:600;margin-right:4px}
+button{font:inherit;font-size:16px;min-height:44px;padding:0 14px;border:2px solid var(--line);background:var(--bg);color:var(--ink);border-radius:0;cursor:pointer;font-weight:500}
+button:hover{background:var(--fill)}
+button:focus-visible,.cell:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+button.on{background:var(--ink);color:var(--bg)}
+button.n{min-width:44px;padding:0;font-weight:600}
+.wrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,360px);gap:clamp(16px,2.5vw,32px);align-items:start}
+.boards{display:flex;flex-wrap:wrap;gap:16px 24px}
+.board h2{font-size:18px;margin:0 0 4px;font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(var(--m),var(--c));border:3px solid var(--line);width:max-content}
+.cell{width:var(--c);height:var(--c);display:grid;place-items:center;border-right:1px solid var(--line);border-bottom:1px solid var(--line);font-weight:600;font-size:calc(var(--c)*.5);font-variant-numeric:tabular-nums;background:var(--bg);color:var(--ink);user-select:none}
+.cell.h{background:var(--ink);color:var(--bg);font-weight:700}
+.cell.corner{font-size:calc(var(--c)*.6)}
+.cell.e{cursor:pointer}
+.cell.e:hover{background:var(--fill)}
+.cell.fx{background:var(--fix)}
+.cell.sv{color:var(--soft);font-style:italic}
+.cell.bad{background:var(--redbg);color:var(--red)}
+.cell.mark{box-shadow:inset 0 0 0 3px var(--red)}
+.cell.sel{background:var(--hi)}
+.cell.hint{box-shadow:inset 0 0 0 3px var(--ok)}
+.pad{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;align-items:center}
+.pad .lbl{font-weight:600;margin-right:6px;white-space:nowrap}
+.tools{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tools.up{margin:0 0 10px}
+.aids{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;align-items:center}
+button.quiet{border:0;background:none;color:var(--soft);font-weight:400;font-size:14px;padding:0 4px;text-decoration:underline;text-underline-offset:3px}
+button.quiet:hover{background:none;color:var(--ink)}
+label.sw{display:flex;gap:8px;align-items:center;margin-top:8px;cursor:pointer}
+label.sw input{width:20px;height:20px;accent-color:var(--red)}
+aside h2{font-size:18px;margin:0 0 6px;font-weight:700}
+.rules{list-style:none;margin:0 0 14px;padding:0;border-top:3px solid var(--line)}
+.rules li{display:grid;grid-template-columns:1.8em 32px minmax(0,1fr) 1.6em;gap:8px;padding:5px 0;border-bottom:1px solid var(--line);align-items:center}
+.rules svg{display:block;width:32px;height:32px}
+.rules .f{display:block;font-size:13px;color:var(--soft);font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.rules li.ko .f{color:inherit}
+.rules b{font-weight:700}
+.rules .st{font-weight:700;text-align:right}
+.rules li.ko{color:var(--red)}
+.rules li.ok .st{color:var(--ok)}
+.rules li.wait .st{color:var(--soft)}
+.rules .grp{display:block;font-size:13px;color:var(--soft);padding-top:8px;border-bottom:0;grid-template-columns:1fr}
+#msg{min-height:0;margin-bottom:14px}
+.note{border-left:6px solid var(--line);padding:10px 14px;margin:0 0 10px;background:var(--fill)}
+.note.err{border-color:var(--red)}
+.note.good{border-color:var(--ok)}
+.note.big{font-size:18px}
+.note p{margin:0 0 6px}.note p:last-child{margin:0}
+.note button{margin-top:8px}
+.err a{color:inherit}
+.small{font-size:14px;color:var(--soft)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;color:var(--soft);margin-top:16px}
+.legend i{display:inline-block;width:16px;height:16px;border:1px solid var(--line);vertical-align:-3px;margin-right:5px}
+@media(max-width:900px){.wrap{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:600px){.boards{gap:18px}}
+@media(prefers-reduced-motion:no-preference){.cell{transition:background .12s}}
+</style>
+</head>
+<body>
+<header class="band top">
+<h1>Enigmistica dei campi finiti</h1>
+<p class="lead">Scegli quanti elementi deve avere il campo e riempi le tavole di somma e prodotto rispettando le regole. Ci riuscirai sempre?</p>
+<div class="bar">
+<div class="chips" id="sizes"><span>Elementi:</span></div>
+</div>
+</header>
+<main class="band wrap">
+<section>
+<div class="tools up">
+<button id="bundo">Annulla</button>
+<button id="bclear">Svuota</button>
+</div>
+<div class="boards" id="boards"></div>
+<div class="pad" id="pad"></div>
+<div class="tools">
+<button id="b58">Applica regole 5 e 8</button>
+</div>
+<label class="sw"><input type="checkbox" id="auto" checked> Riempi da sola la casella simmetrica (regola 7)</label>
+<div class="aids">
+<button id="bhint" class="quiet">Suggerimento</button>
+<button id="bsolve" class="quiet">Esiste un campo da qui?</button>
+</div>
+</section>
+<aside>
+<h2>Che cosa succede</h2>
+<div id="msg"></div>
+<h2>Regole</h2>
+<ul class="rules" id="rules"></ul>
+</aside>
+</main>
+<script>
+{
+// T[0]=somma, T[1]=prodotto; valori -1 = vuoto
+function mk(N){return [0,1].map(()=>Array.from({length:N},()=>Array(N).fill(-1)));}
+function clone(T){return T.map(t=>t.map(r=>r.slice()));}
+// prima violazione (regola) se si mette v in T[k][i][j] (e simmetrico), altrimenti 0
+function conflict(T,N,k,i,j,v){
+  const t=T[k];
+  if(k===0){ if(i===0&&v!==j) return 5; if(j===0&&v!==i) return 5; }
+  else{
+    if(i===0||j===0){ if(v!==0) return 8; }
+    else{ if(i===1&&v!==j) return 5; if(j===1&&v!==i) return 5; if(v===0) return 2; }
+  }
+  if(t[j][i]!==-1&&t[j][i]!==v&&!(i===j)) return 7;
+  const skip0=k===1&&(i===0||j===0);
+  if(!skip0){
+    for(let c=0;c<N;c++){ if(c!==j&&t[i][c]===v&&!(k===1&&c===0)) return 9; }
+    for(let r=0;r<N;r++){ if(r!==i&&t[r][j]===v&&!(k===1&&r===0)) return 9; }
+  }
+  const o1=t[i][j],o2=t[j][i]; t[i][j]=v; t[j][i]=v;
+  let res=0;
+  // inverso: riga completa senza neutro
+  const e=k===0?0:1;
+  if(!(k===1&&i===0)){ for(const r of [i,j]){ if(k===1&&r===0) continue; const row=t[r]; if(row.every(x=>x!==-1)&&!row.includes(e)){res=6;break;} } }
+  if(!res){ // associativita locale
+    const g=(a,b)=>a<0||b<0?-1:t[a][b];
+    outer: for(let a=0;a<N;a++)for(let b=0;b<N;b++){
+      const ab=t[a][b]; 
+      for(let c=0;c<N;c++){
+        if(!(a===i&&b===j)&&!(ab===i&&c===j)&&!(b===i&&c===j)&&!(a===i&&t[b][c]===j)&&!(a===j&&b===i)&&!(ab===j&&c===i)&&!(b===j&&c===i)&&!(a===j&&t[b][c]===i)) continue;
+        const l=g(ab,c), r=g(a,t[b][c]);
+        if(l>=0&&r>=0&&l!==r){res=4;break outer;}
+      }
+    }
+  }
+  if(!res&&distCheck(T,N)) res=3;
+  t[i][j]=o1; t[j][i]=o2;
+  return res;
+}
+function distCheck(T,N){ // ritorna [a,b,c] controesempio o null
+  const P=T[0],M=T[1];
+  for(let a=0;a<N;a++)for(let b=0;b<N;b++)for(let c=b;c<N;c++){
+    const s=P[b][c]; if(s<0) continue; const l=M[a][s]; if(l<0) continue;
+    const x=M[a][b],y=M[a][c]; if(x<0||y<0) continue; const r=P[x][y]; if(r<0) continue;
+    if(l!==r) return [a,b,c,l,r,s,x,y];
+  }
+  return null;
+}
+function cands(T,N,k,i,j){const out=[];for(let v=0;v<N;v++){if(!conflict(T,N,k,i,j,v))out.push(v);}return out;}
+function empties(T,N){const L=[];for(let k=0;k<2;k++)for(let i=0;i<N;i++)for(let j=i;j<N;j++)if(T[k][i][j]===-1)L.push([k,i,j]);return L;}
+function solve(T0,N,limit){
+  const T=clone(T0); let nodes=0, stop=false; const t0=Date.now();
+  function rec(){
+    if(++nodes>limit||Date.now()-t0>6000){stop=true;return false;}
+    const E=empties(T,N); if(!E.length) return true;
+    let best=null,bc=null;
+    for(const [k,i,j] of E){const c=cands(T,N,k,i,j); if(!best||c.length<bc.length){best=[k,i,j];bc=c; if(c.length<=1)break;}}
+    if(!bc.length) return false;
+    const [k,i,j]=best;
+    for(const v of bc){T[k][i][j]=v;T[k][j][i]=v; if(rec())return true; if(stop)return false; T[k][i][j]=-1;T[k][j][i]=-1;}
+    return false;
+  }
+  const ok=rec();
+  return {ok, stop, nodes, T: ok?T:null, ms:Date.now()-t0};
+}
+
+const OPS=['+','·'];
+const SV=s=>`<svg viewBox="0 0 32 32" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6">${s}</svg>`;
+const GR='<path d="M2.5 2.5h27v27h-27z M2.5 11.5h27 M2.5 20.5h27 M11.5 2.5v27 M20.5 2.5v27"/>';
+const C=(r,c,op)=>`<rect x="${2.5+c*9}" y="${2.5+r*9}" width="9" height="9" fill="currentColor" fill-opacity="${op}" stroke="none"/>`;
+const ICONS={
+ 1:SV('<rect x="2.5" y="2.5" width="27" height="27"/><path d="M16 8v16M8 16h16" stroke-width="3"/>'),
+ 2:SV('<rect x="2.5" y="2.5" width="27" height="27"/><circle cx="16" cy="16" r="3.6" fill="currentColor" stroke="none"/>'),
+ 3:SV('<circle cx="6" cy="10" r="3" fill="currentColor" stroke="none"/><circle cx="18" cy="25" r="3"/><circle cx="27" cy="25" r="3"/><path d="M8 12.5Q15 14 17 21.5M8.5 11Q24 11 26 21.5"/>'),
+ 4:SV('<circle cx="6" cy="16" r="3" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="3" fill="currentColor" stroke="none"/><circle cx="26" cy="16" r="3" fill="currentColor" stroke="none"/><path d="M4 10Q11 3 18 10"/><path d="M14 22Q21 29 28 22" stroke-dasharray="2.5 2"/>'),
+ 5:SV(C(0,0,.35)+C(0,1,.35)+C(0,2,.35)+C(1,0,.35)+C(2,0,.35)+GR),
+ 6:SV(GR+'<rect x="2.5" y="11.5" width="27" height="9" stroke-width="3"/><circle cx="25" cy="16" r="2.4" fill="currentColor" stroke="none"/>'),
+ 7:SV(C(0,2,.5)+C(2,0,.5)+GR+'<path d="M2.5 2.5L29.5 29.5" stroke-dasharray="2.5 2"/>'),
+ 8:SV(C(0,0,1)+C(0,1,1)+C(0,2,1)+C(1,0,1)+C(2,0,1)+GR),
+ 9:SV(GR+'<circle cx="7" cy="16" r="2.6"/><path d="M16 13l3 5h-6z"/><rect x="22.5" y="13.5" width="5" height="5"/>')
+};
+const RULES=[
+ ['g','Regole di campo'],
+ [1,'(F, +) è un gruppo abeliano','con neutro 0'],
+ [2,'(F senza lo 0, ·) è un gruppo abeliano','con neutro 1'],
+ [3,'· è distributiva su +','a·(b + c) = a·b + a·c'],
+ ['g','Regole di gruppo abeliano'],
+ [4,'operazione chiusa e associativa','(a ∘ b) ∘ c = a ∘ (b ∘ c)'],
+ [5,'esiste un unico elemento neutro','e ∘ a = a'],
+ [6,'ogni elemento ha l\'inverso','a ∘ a′ = e'],
+ [7,'operazione commutativa','a ∘ b = b ∘ a'],
+ ['g','Altre regole importanti'],
+ [8,'lo 0 è assorbente','0 · a = 0'],
+ [9,'unicità dei risultati: nessun numero ripetuto in una riga o colonna','nella tavola · si ignorano riga e colonna dello 0']
+];
+let N=4,T,F,hist=[],sel=null,note=null,hintCell=null,marks=[];
+const $=id=>document.getElementById(id);
+
+function start(data){
+  if(data&&data.N&&data.T){N=data.N;T=data.T;F=data.F||mkF();}else demo();
+  buildSizes();render();
+  window.claude?.hot?.snapshot?.(()=>({N,T,F}));
+}
+function mkF(){return [0,1].map(()=>Array.from({length:N},()=>Array(N).fill(0)));}
+function demo(){ // situazione di p. 48: prodotto completo, somma da completare
+  N=4;T=mk(N);F=mkF();rules58();
+  const M=T[1];M[2][2]=3;M[2][3]=M[3][2]=1;M[3][3]=2;
+  note={cls:'',html:'<p>Situazione di partenza di p. 48: la tavola del prodotto è completa, quella della somma no. Quanto fa 1 + 1?</p>'};
+}
+function rules58(){
+  for(let i=0;i<N;i++){
+    set(0,0,i,i,true);set(1,0,i,0,true);if(N>1)set(1,1,i,i,true);
+  }
+}
+function set(k,i,j,v,fixed){T[k][i][j]=v;T[k][j][i]=v;F[k][i][j]=F[k][j][i]=fixed?1:0;}
+
+function buildSizes(){
+  $('sizes').innerHTML='<span>Elementi:</span>'+[2,3,4,5,6,7,8,9].map(n=>`<button class="n${n===N?' on':''}" data-n="${n}" aria-pressed="${n===N}">${n}</button>`).join('');
+}
+function cellSize(){
+  const w=Math.min(document.querySelector('main section').clientWidth||600,900);
+  const side=w>=2*(N+1)*34+40;
+  const avail=side?(w-40)/2:w;
+  return Math.max(28,Math.min(52,Math.floor(avail/(N+1))-1));
+}
+function viols(){
+  const out=[],P=T[0];
+  const add=(r,k,text,cells)=>out.push({r,k,text,cells});
+  for(let k=0;k<2;k++){const t=T[k],op=OPS[k];
+    for(let i=0;i<N;i++)for(let j=0;j<N;j++){const v=t[i][j];if(v<0)continue;
+      if(k===0&&i===0&&v!==j)add(5,0,`0 + ${j} deve fare ${j}: lo 0 è il neutro della somma.`,[[0,i,j]]);
+      if(k===0&&j===0&&i>0&&v!==i)add(5,0,`${i} + 0 deve fare ${i}: lo 0 è il neutro della somma.`,[[0,i,j]]);
+      if(k===1&&(i===0||j===0)&&v!==0)add(8,1,`${Math.min(i,j)} · ${Math.max(i,j)} deve fare 0: lo 0 è assorbente.`,[[1,i,j]]);
+      if(k===1&&(i===1||j===1)&&i>0&&j>0){const o=i===1?j:i;if(v!==o)add(5,1,`1 · ${o} deve fare ${o}: l'1 è il neutro del prodotto.`,[[1,i,j]]);}
+      if(k===1&&i>0&&j>0&&v===0)add(2,1,`${Math.min(i,j)} · ${Math.max(i,j)} = 0, ma il prodotto di due elementi diversi da 0 non può essere 0.`,[[1,i,j]]);
+      if(i<j&&t[j][i]>=0&&t[j][i]!==v)add(7,k,`${i} ${op} ${j} = ${v}, ma ${j} ${op} ${i} = ${t[j][i]}.`,[[k,i,j],[k,j,i]]);
+    }
+    for(let i=0;i<N;i++){ if(k===1&&i===0)continue;
+      for(const line of ['r','c']){const seen={};
+        for(let j=0;j<N;j++){ if(k===1&&j===0)continue; const v=line==='r'?t[i][j]:t[j][i]; if(v<0)continue;
+          if(seen[v]!==undefined){const a=seen[v];add(9,k,`Nella ${line==='r'?'riga':'colonna'} del ${i} della tavola ${op} il ${v} compare due volte.`,line==='r'?[[k,i,a],[k,i,j]]:[[k,a,i],[k,j,i]]);}
+          else seen[v]=j;}}
+      const row=t[i],e=k===0?0:1;
+      if(row.every(x=>x>=0)&&!row.includes(e))add(6,k,`${i} non ha inverso ${k?'moltiplicativo':'additivo'}: nella sua riga manca ${e}.`,row.map((_,j)=>[k,i,j]));
+    }
+    let done=false;
+    for(let a=0;a<N&&!done;a++)for(let b=0;b<N&&!done;b++)for(let c=0;c<N&&!done;c++){
+      const ab=t[a][b],bc=t[b][c];if(ab<0||bc<0)continue;const l=t[ab][c],r=t[a][bc];
+      if(l>=0&&r>=0&&l!==r){done=true;add(4,k,`(${a} ${op} ${b}) ${op} ${c} = ${ab} ${op} ${c} = ${l}, ma ${a} ${op} (${b} ${op} ${c}) = ${a} ${op} ${bc} = ${r}.`,[[k,a,b],[k,ab,c],[k,b,c],[k,a,bc]]);}
+    }
+  }
+  const d=distCheck(T,N);
+  if(d){const [a,b,c,l,r,s,x,y]=d;add(3,2,`${a}·(${b} + ${c}) = ${a}·${s} = ${l}, ma ${a}·${b} + ${a}·${c} = ${x} + ${y} = ${r}.`,[[0,b,c],[1,a,s],[1,a,b],[1,a,c],[0,x,y]]);}
+  const seenT=new Map();for(const v of out){const s=seenT.get(v.text);if(s)s.cells.push(...v.cells);else seenT.set(v.text,v);}
+  return [...seenT.values()];
+}
+function render(){
+  const c=cellSize(),V=viols();
+  const bad=new Set();V.forEach(v=>v.cells.forEach(([k,i,j])=>bad.add(k+'.'+i+'.'+j)));
+  const mkd=new Set(marks.map(([k,i,j])=>k+'.'+i+'.'+j));
+  $('boards').innerHTML=[0,1].map(k=>{
+    let h=`<div class="cell h corner">${OPS[k]}</div>`+Array.from({length:N},(_,j)=>`<div class="cell h">${j}</div>`).join('');
+    for(let i=0;i<N;i++){h+=`<div class="cell h">${i}</div>`;
+      for(let j=0;j<N;j++){const v=T[k][i][j],id=k+'.'+i+'.'+j;
+        let cl='cell e';if(F[k][i][j]===1)cl+=' fx';if(F[k][i][j]===2)cl+=' sv';if(bad.has(id))cl+=' bad';if(mkd.has(id))cl+=' mark';
+        if(sel&&sel[0]===k&&sel[1]===i&&sel[2]===j)cl+=' sel';if(hintCell&&hintCell.join('.')===id)cl+=' hint';
+        h+=`<div class="${cl}" tabindex="0" role="button" data-k="${k}" data-i="${i}" data-j="${j}" aria-label="${i} ${OPS[k]} ${j}">${v<0?'':v}</div>`;}}
+    return `<div class="board"><h2>${k?'Prodotto':'Somma'}</h2><div class="grid" style="--m:${N+1};--c:${c}px">${h}</div></div>`;
+  }).join('');
+  $('pad').innerHTML=`<span class="lbl">${sel?`${sel[1]} ${OPS[sel[0]]} ${sel[2]} =`:'Scegli una casella'}</span>`+Array.from({length:N},(_,v)=>`<button class="n" data-v="${v}" ${sel?'':'disabled'}>${v}</button>`).join('')+`<button data-v="-1" ${sel?'':'disabled'}>Cancella</button>`;
+  const ko=new Set(),parts={0:new Set(),1:new Set()};
+  V.forEach(v=>{ko.add(v.r);if(v.k<2&&[4,5,6,7,9].includes(v.r))ko.add(v.k?2:1);});
+  const full=[0,1].map(k=>T[k].every(r=>r.every(x=>x>=0)));
+  const all=full[0]&&full[1];
+  $('rules').innerHTML=RULES.map(([n,t,f])=>{
+    if(n==='g')return `<li class="grp">${t}</li>`;
+    const st=ko.has(n)?'ko':(all?'ok':'wait');
+    return `<li class="${st}"><b>${n}.</b>${ICONS[n]}<span>${t}${f?`<span class="f">${f}</span>`:''}</span><span class="st">${st==='ko'?'✕':st==='ok'?'✓':'·'}</span></li>`;}).join('');
+  let m='';
+  if(note)m+=`<div class="note ${note.cls}">${note.html}</div>`;
+  if(all&&!V.length)m+=`<div class="note good big">${successText()}</div>`;
+  V.slice(0,6).forEach((v,ix)=>{m+=`<div class="note err"><p><b>Regola ${v.r}.</b> ${v.text}</p></div>`;});
+  if(V.length>6)m+=`<p class="small">E altre ${V.length-6} violazioni.</p>`;
+  if(!V.length&&!all&&!note){const e=empties(T,N).length;m+=`<p class="small">Nessuna regola violata finora. Mancano ${e} caselle (contando una sola volta le coppie simmetriche).</p>`;}
+  $('msg').innerHTML=m;
+}
+function successText(){
+  const P=T[0],M=T[1];let zn=true;
+  for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(P[i][j]!==(i+j)%N||M[i][j]!==(i*j)%N)zn=false;
+  let p=1,s=1;while(s!==0){s=P[s][1];p++;}
+  const pw=Math.round(Math.log(N)/Math.log(p));
+  return `<p><b>Hai costruito un campo con ${N} elementi.</b></p><p>${zn?`Le tavole sono quelle degli interi modulo ${N}: è Z<sub>${N}</sub>.`:`Non è Z<sub>${N}</sub>: è GF(${N})${pw>1?` = GF(${p}<sup>${pw}</sup>)`:''}, con le cifre usate come nomi degli elementi.`} Sommando 1 a se stesso si torna a 0 dopo ${p} passi: la caratteristica del campo è ${p}.</p>`;
+}
+function put(v){
+  if(!sel)return;const [k,i,j]=sel;
+  hist.push(JSON.stringify([T,F]));if(hist.length>200)hist.shift();
+  T[k][i][j]=v;F[k][i][j]=0;
+  if($('auto').checked){T[k][j][i]=v;F[k][j][i]=0;}
+  note=null;hintCell=null;marks=[];render();
+}
+function hint(){
+  hintCell=null;marks=[];
+  if(viols().length){note={cls:'err',html:'<p>Prima correggi le caselle in rosso: con una regola violata non si va avanti.</p>'};render();return;}
+  const E=empties(T,N);
+  if(!E.length){note={cls:'',html:'<p>Le tavole sono complete.</p>'};render();return;}
+  let best=null,bc=null;
+  for(const [k,i,j] of E){const c=cands(T,N,k,i,j);if(!best||c.length<bc.length){best=[k,i,j];bc=c;if(c.length<2)break;}}
+  const [k,i,j]=best;hintCell=best;sel=best;
+  const why=Array.from({length:N},(_,v)=>v).filter(v=>!bc.includes(v)).map(v=>`${v} (regola ${conflict(T,N,k,i,j,v)})`);
+  const q=`${i} ${OPS[k]} ${j}`;
+  if(!bc.length)note={cls:'err',html:`<p><b>Vicolo cieco.</b> La casella ${q} non può contenere nessun valore: ${why.join(', ')}. Una scelta fatta prima va cambiata.</p>`};
+  else if(bc.length===1)note={cls:'',html:`<p><b>Casella obbligata:</b> ${q} può valere solo <b>${bc[0]}</b>.</p>${why.length?`<p class="small">Gli altri valori violano una regola: ${why.join(', ')}.</p>`:''}`};
+  else note={cls:'',html:`<p>Nessuna casella è obbligata. La più vincolata è ${q}: può valere ${bc.join(' o ')}. Qui bisogna scegliere, e magari tornare indietro.</p>${why.length?`<p class="small">Esclusi: ${why.join(', ')}.</p>`:''}`};
+  render();
+}
+let found=null;
+function solveHere(){
+  hintCell=null;marks=[];
+  if(viols().length){note={cls:'err',html:'<p>Prima correggi le caselle in rosso.</p>'};render();return;}
+  const r=solve(T,N,300000);
+  if(r.ok){found=r.T;note={cls:'good',html:`<p><b>Sì:</b> queste tavole si possono completare in un campo.</p><button id="bshow">Mostra il completamento</button>`};}
+  else if(r.stop)note={cls:'',html:'<p>La ricerca è troppo lunga per dare una risposta: prova a riempire qualche casella in più.</p>'};
+  else note={cls:'err',html:'<p><b>No:</b> da qui non si arriva a nessun campo. Tutte le possibilità portano a violare una regola.</p>'};
+  render();
+}
+function showFound(){
+  if(!found)return;hist.push(JSON.stringify([T,F]));
+  for(let k=0;k<2;k++)for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(T[k][i][j]<0){T[k][i][j]=found[k][i][j];F[k][i][j]=2;}
+  found=null;note=null;render();
+}
+document.addEventListener('click',e=>{
+  const b=e.target.closest('button,.cell.e');if(!b)return;
+  if(b.dataset.n){N=+b.dataset.n;T=mk(N);F=mkF();hist=[];sel=null;hintCell=null;marks=[];note=null;buildSizes();render();return;}
+  if(b.classList.contains('cell')){sel=[+b.dataset.k,+b.dataset.i,+b.dataset.j];render();const el=document.querySelector(`.cell[data-k="${sel[0]}"][data-i="${sel[1]}"][data-j="${sel[2]}"]`);el&&el.focus();return;}
+  if(b.dataset.v!==undefined){put(+b.dataset.v);return;}
+  if(b.id==='bshow'){showFound();return;}
+  if(b.id==='b58'){hist.push(JSON.stringify([T,F]));rules58();note=null;render();}
+  if(b.id==='bhint')hint();
+  if(b.id==='bsolve')solveHere();
+  if(b.id==='bundo'&&hist.length){[T,F]=JSON.parse(hist.pop());note=null;hintCell=null;render();}
+  if(b.id==='bclear'){hist.push(JSON.stringify([T,F]));T=mk(N);F=mkF();sel=null;note=null;hintCell=null;render();}
+});
+document.addEventListener('keydown',e=>{
+  if(!sel||e.target.tagName==='INPUT')return;
+  if(/^[0-9]$/.test(e.key)&&+e.key<N){put(+e.key);e.preventDefault();return;}
+  if(e.key==='Backspace'||e.key==='Delete'){put(-1);e.preventDefault();return;}
+  const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+  if(d){sel=[sel[0],Math.min(N-1,Math.max(0,sel[1]+d[0])),Math.min(N-1,Math.max(0,sel[2]+d[1]))];render();
+    const el=document.querySelector(`.cell[data-k="${sel[0]}"][data-i="${sel[1]}"][data-j="${sel[2]}"]`);el&&el.focus();e.preventDefault();}
+});
+let lastC=0;const ro=new ResizeObserver(()=>{if(T){const c=cellSize();if(c!==lastC){lastC=c;render();}}});ro.observe(document.querySelector('main section'));
+window.claude?.hot?.ready?window.claude.hot.ready(start):start(window.claude?.hot?.data??{});
+
+}
+</script>
+</body>
+</html>
